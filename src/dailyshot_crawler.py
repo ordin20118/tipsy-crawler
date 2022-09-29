@@ -1,0 +1,165 @@
+import time
+import random
+import sys
+import json
+import urllib.request
+import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+
+def set_chrome_driver():
+    chrome_options = webdriver.ChromeOptions()
+    #chrome_options.add_argument('headless')
+    #chrome_options.add_argument('window-size=1920x1080')
+    chrome_options.add_argument("disable-gpu")
+    # 혹은 options.add_argument("--disable-gpu")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    return driver
+
+API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
+CRAWL_SITE_CODE = 1
+MAX_CRAWL_COUNT = 1    # 최대 크롤링 데이터 개수
+MIN_LIQUOR_ID = 1       # 최소 주류 ID
+MAX_LIQUOR_ID = 4999    # 최대 주류 ID
+MIN_WAIT_TIME = 30      # 최소 대기 시간 - 30초
+MAX_WAIT_TIME = 90      # 최대 대기 시간 - 1분 30초
+
+driver = set_chrome_driver()
+driver.implicitly_wait(3)
+
+print('[START DAILY_SHOT CRAWLING]')
+
+# 한 번의 실행에 100개의 데이터 조회
+crawled_cnt = 0
+while crawled_cnt <= MAX_CRAWL_COUNT:
+
+    data = {}
+
+    # ID 범위 1 ~ 4999
+    liquor_id = random.randrange(MIN_LIQUOR_ID, MAX_LIQUOR_ID)
+    ## url에 접근한다.
+    # https://dailyshot.co/pickup/products/1647/detail/
+    #crawl_url = 'https://dailyshot.co/pickup/products/%d/detail/' % liquor_id 
+    crawl_url = 'https://dailyshot.co/pickup/products/3528/detail/' 
+    driver.get(crawl_url)
+
+    data['url'] = crawl_url
+    data['site'] = CRAWL_SITE_CODE
+
+    print("[CRAWL_URL]")
+    print(crawl_url)
+
+    # 술 이름 가져오기 
+    #names = driver.find_elements_by_class_name("good_tit1")
+    name_en = driver.find_element(by=By.XPATH, value='//*[@class="en-name"]')
+    data['name_en'] = name_en.text
+    print("[name_en]")
+    print(name_en.text)
+    
+    name_kr = driver.find_element(by=By.XPATH, value='//*[@class="ko-name"]')
+    data['name_kr'] = name_kr.text
+    print("[name_kr]")
+    print(name_kr.text)
+
+
+    # rating_avg => //*[@class="review-rate"]/p
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="review-rate"]/p')) > 0:
+        rating_avg_p = driver.find_element(by=By.XPATH, value='//*[@class="review-rate"]/p')
+        ratinv_avg = rating_avg_p.text
+        data['ratinv_avg'] = ratinv_avg
+        print("[ratinv_avg]")
+        print(ratinv_avg)
+
+    # rating_count => //*[@class="review-count"]/u "23개의 리뷰"
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="review-count"]')) > 0:
+        rating_count_u = driver.find_element(by=By.XPATH, value='//*[@class="review-count"]')
+        end_idx = rating_count_u.text.find("개")
+        ratinv_count = rating_count_u.text[0:end_idx]
+        data['ratinv_count'] = ratinv_count
+        print("[ratinv_count]")
+        print(ratinv_count)
+
+    # abv, category, country
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="product-info-row"]')) > 0:
+        info_rows = driver.find_elements(by=By.XPATH, value='//*[@class="product-info-row"]')
+        for row in info_rows:
+            els = row.find_elements(by=By.XPATH, value='./p')
+            for el in els:
+                if el.text == '종류':
+                    data['category_name'] = els[1].text
+                    print("[category_name]")
+                    print(els[1].text)
+                elif el.text == '도수':
+                    data['abv'] = els[1].text.replace("%", "")
+                    print("[abv]")
+                    print(els[1].text)
+                elif el.text == '국가':
+                    data['country_name'] = els[1].text
+                    print("[country_name]")
+                    print(els[1].text)
+
+
+    # 썸네일 이미지
+    if len(driver.find_elements(by=By.XPATH, value='//*[@id="thumbnail-image"]')) > 0:
+        thumb = driver.find_element(by=By.XPATH, value='//*[@id="thumbnail-image"]')
+        data['image_url'] = thumb.get_attribute('src')
+        print("[image_url]")
+        print(thumb.get_attribute('src'))
+    
+
+    # tasting notes
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="tasting-note-row"]')) > 0:
+        tasting_notes_rows = driver.find_elements(by=By.XPATH, value='//*[@class="tasting-note-row"]')
+        tasting_notes = {}
+        i = 0
+        for row in tasting_notes_rows:
+            spans = row.find_elements(by=By.XPATH, value='./span')
+            if i == 0:
+                tasting_notes['nosing'] = spans[1].text
+            elif i == 1:
+                tasting_notes['tasting'] = spans[1].text
+            elif i == 2:
+                tasting_notes['finish'] = spans[1].text
+            i = i + 1
+            
+        data['tasting_notes'] = tasting_notes
+
+
+    # description
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="comment"]')) > 0:
+        description = ""
+        comments = driver.find_elements(by=By.XPATH, value='//*[@class="comment"]')
+        for comment in comments:
+            description = description + "\n" + comment.text
+        data['description'] = description
+        print("[description]")
+        print(description)
+
+
+    data_json = json.dumps(data, ensure_ascii=False).encode('utf8')
+    #print("[data_json]")
+    #print(data_json)
+    
+    # send data
+    headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer AUTOmKFxUkmakDV9w8z/yLOxrbm0WwxgbNpsOS6HhoUAGNY='
+    }
+    res = requests.post(API_SAVE_URL, headers=headers, data=data_json)
+
+    print("[SAVE REQUEST RESULT]")
+    print("[STATUS_CODE]:%s" % res.status_code)
+
+    crawled_cnt = crawled_cnt + 1
+
+    # set delay
+    random_time = random.randrange(MIN_WAIT_TIME, MAX_WAIT_TIME)
+    print("[WAIT FOR TIME]:%d "% random_time)
+    time(random_time)
+
+print('[END DAILY_SHOT CRAWLING]')
+
+#driver.quit()
