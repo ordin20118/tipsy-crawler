@@ -19,13 +19,14 @@ def set_chrome_driver():
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     return driver
 
-API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
+API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
+#API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
-MAX_CRAWL_COUNT = 1    # 최대 크롤링 데이터 개수
+MAX_CRAWL_COUNT = 50    # 최대 크롤링 데이터 개수
 MIN_LIQUOR_ID = 1       # 최소 주류 ID
 MAX_LIQUOR_ID = 4999    # 최대 주류 ID
 MIN_WAIT_TIME = 30      # 최소 대기 시간 - 30초
-MAX_WAIT_TIME = 90      # 최대 대기 시간 - 1분 30초
+MAX_WAIT_TIME = 60      # 최대 대기 시간 - 1분
 
 driver = set_chrome_driver()
 driver.implicitly_wait(3)
@@ -34,17 +35,18 @@ print('[START DAILY_SHOT CRAWLING]')
 
 # 한 번의 실행에 100개의 데이터 조회
 crawled_cnt = 0
-while crawled_cnt <= MAX_CRAWL_COUNT:
+while crawled_cnt < MAX_CRAWL_COUNT:
 
     data = {}
 
     # ID 범위 1 ~ 4999
     liquor_id = random.randrange(MIN_LIQUOR_ID, MAX_LIQUOR_ID)
-    ## url에 접근한다.
-    # https://dailyshot.co/pickup/products/1647/detail/
-    #crawl_url = 'https://dailyshot.co/pickup/products/%d/detail/' % liquor_id 
-    crawl_url = 'https://dailyshot.co/pickup/products/3528/detail/' 
+   
+    crawl_url = 'https://dailyshot.co/pickup/products/%d/detail/' % liquor_id 
+    #crawl_url = 'https://dailyshot.co/pickup/products/1127/detail/'    # for test
     driver.get(crawl_url)
+
+    # TODO: 없는 제품 번호의 경우 블랙리스트로 등록 - file
 
     data['url'] = crawl_url
     data['site'] = CRAWL_SITE_CODE
@@ -54,33 +56,36 @@ while crawled_cnt <= MAX_CRAWL_COUNT:
 
     # 술 이름 가져오기 
     #names = driver.find_elements_by_class_name("good_tit1")
-    name_en = driver.find_element(by=By.XPATH, value='//*[@class="en-name"]')
-    data['name_en'] = name_en.text
-    print("[name_en]")
-    print(name_en.text)
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="en-name"]')) > 0:
+        name_en = driver.find_element(by=By.XPATH, value='//*[@class="en-name"]')
+        data['name_en'] = name_en.text
+        print("[name_en]")
+        print(name_en.text)
     
-    name_kr = driver.find_element(by=By.XPATH, value='//*[@class="ko-name"]')
-    data['name_kr'] = name_kr.text
-    print("[name_kr]")
-    print(name_kr.text)
+
+    if len(driver.find_elements(by=By.XPATH, value='//*[@class="ko-name"]')) > 0:
+        name_kr = driver.find_element(by=By.XPATH, value='//*[@class="ko-name"]')
+        data['name_kr'] = name_kr.text
+        print("[name_kr]")
+        print(name_kr.text)
 
 
     # rating_avg => //*[@class="review-rate"]/p
     if len(driver.find_elements(by=By.XPATH, value='//*[@class="review-rate"]/p')) > 0:
         rating_avg_p = driver.find_element(by=By.XPATH, value='//*[@class="review-rate"]/p')
-        ratinv_avg = rating_avg_p.text
-        data['ratinv_avg'] = ratinv_avg
-        print("[ratinv_avg]")
-        print(ratinv_avg)
+        rating_avg = rating_avg_p.text
+        data['rating_avg'] = rating_avg
+        print("[rating_avg]")
+        print(rating_avg)
 
     # rating_count => //*[@class="review-count"]/u "23개의 리뷰"
     if len(driver.find_elements(by=By.XPATH, value='//*[@class="review-count"]')) > 0:
         rating_count_u = driver.find_element(by=By.XPATH, value='//*[@class="review-count"]')
         end_idx = rating_count_u.text.find("개")
-        ratinv_count = rating_count_u.text[0:end_idx]
-        data['ratinv_count'] = ratinv_count
-        print("[ratinv_count]")
-        print(ratinv_count)
+        rating_count = rating_count_u.text[0:end_idx]
+        data['rating_count'] = rating_count
+        print("[rating_count]")
+        print(rating_count)
 
     # abv, category, country
     if len(driver.find_elements(by=By.XPATH, value='//*[@class="product-info-row"]')) > 0:
@@ -93,12 +98,17 @@ while crawled_cnt <= MAX_CRAWL_COUNT:
                     print("[category_name]")
                     print(els[1].text)
                 elif el.text == '도수':
+                    # TODO: replace 이후 숫자가 아니라면 데이터 설정x
                     data['abv'] = els[1].text.replace("%", "")
                     print("[abv]")
                     print(els[1].text)
                 elif el.text == '국가':
                     data['country_name'] = els[1].text
                     print("[country_name]")
+                    print(els[1].text)
+                elif el.text == '지역':
+                    data['region_name'] = els[1].text
+                    print("[region_name]")
                     print(els[1].text)
 
 
@@ -135,8 +145,8 @@ while crawled_cnt <= MAX_CRAWL_COUNT:
         for comment in comments:
             description = description + "\n" + comment.text
         data['description'] = description
-        print("[description]")
-        print(description)
+        #print("[description]")
+        #print(description)
 
 
     data_json = json.dumps(data, ensure_ascii=False).encode('utf8')
@@ -152,14 +162,15 @@ while crawled_cnt <= MAX_CRAWL_COUNT:
 
     print("[SAVE REQUEST RESULT]")
     print("[STATUS_CODE]:%s" % res.status_code)
-
+    
     crawled_cnt = crawled_cnt + 1
+
+    print("[TOTAL_CRAWLED]:%s" % crawled_cnt)
 
     # set delay
     random_time = random.randrange(MIN_WAIT_TIME, MAX_WAIT_TIME)
-    print("[WAIT FOR TIME]:%d "% random_time)
-    time(random_time)
+    print("[WAITING FOR]: %ds ... "% random_time)
+    time.sleep(random_time)
 
 print('[END DAILY_SHOT CRAWLING]')
-
-#driver.quit()
+driver.quit()
