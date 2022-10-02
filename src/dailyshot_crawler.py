@@ -22,7 +22,7 @@ def set_chrome_driver():
 API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
 #API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
-MAX_CRAWL_COUNT = 50    # 최대 크롤링 데이터 개수
+MAX_CRAWL_COUNT = 100    # 최대 크롤링 데이터 개수
 MIN_LIQUOR_ID = 1       # 최소 주류 ID
 MAX_LIQUOR_ID = 4999    # 최대 주류 ID
 MIN_WAIT_TIME = 30      # 최소 대기 시간 - 30초
@@ -35,6 +35,8 @@ print('[START DAILY_SHOT CRAWLING]')
 
 # 한 번의 실행에 100개의 데이터 조회
 crawled_cnt = 0
+crawled_success = 0
+crawled_fail = 0
 while crawled_cnt < MAX_CRAWL_COUNT:
 
     data = {}
@@ -162,10 +164,15 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
     print("[SAVE REQUEST RESULT]")
     print("[STATUS_CODE]:%s" % res.status_code)
+
+    if res.status_code == 200:
+        crawled_success = crawled_success + 1
+    else:
+        crawled_fail = crawled_fail + 1
     
     crawled_cnt = crawled_cnt + 1
 
-    print("[TOTAL_CRAWLED]:%s" % crawled_cnt)
+    print("[CRAWLED_RESULT] - [TOTAL]:%s/[SUCCESS]:%s/[FAIL]:%s" % (crawled_cnt, crawled_success, crawled_fail))
 
     # set delay
     random_time = random.randrange(MIN_WAIT_TIME, MAX_WAIT_TIME)
