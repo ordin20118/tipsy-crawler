@@ -4,6 +4,7 @@ import sys
 import json
 import urllib.request
 import requests
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -16,20 +17,41 @@ def set_chrome_driver():
     #chrome_options.add_argument('window-size=1920x1080')
     chrome_options.add_argument("disable-gpu")
     # 혹은 options.add_argument("--disable-gpu")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    #driver = webdriver.Chrome(service=Service(ChromeDriverManager(version="114.0.5735.90").install()), options=chrome_options)
+
+    #/Users/gwanga/Downloads/chromedriver_mac_arm64/chromedriver
+    driver = webdriver.Chrome('/Users/gwanga/git/tipsy-crawler/chromedriver', options=chrome_options)
+    
     return driver
 
-API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
-#API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
+def get_black_list_file_path():
+    now_path = os.path.abspath(__file__)
+    parent_path = os.path.dirname(now_path)
+    pparent_path = os.path.dirname(parent_path)
+    path = "%s/black_list.txt"%pparent_path
+    return path
+
+black_list = {}
+def set_black_list():
+    with open(get_black_list_file_path(), "r", encoding="utf-8") as file:
+        for blacklist_id in file:
+            print(blacklist_id.strip())
+            black_list[int(blacklist_id)] = True
+
+#API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
+API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
 MAX_CRAWL_COUNT = 100    # 최대 크롤링 데이터 개수
 MIN_LIQUOR_ID = 1       # 최소 주류 ID
 MAX_LIQUOR_ID = 4999    # 최대 주류 ID
-MIN_WAIT_TIME = 30      # 최소 대기 시간 - 30초
-MAX_WAIT_TIME = 60      # 최대 대기 시간 - 1분
+MIN_WAIT_TIME = 10      # 최소 대기 시간 - 10초
+MAX_WAIT_TIME = 30      # 최대 대기 시간 - 30초
 
 driver = set_chrome_driver()
 driver.implicitly_wait(3)
+
+set_black_list()
 
 print('[START DAILY_SHOT CRAWLING]')
 
@@ -55,6 +77,21 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
     print("[CRAWL_URL]")
     print(crawl_url)
+
+    # 블랙리스트 확인
+    if liquor_id in black_list:
+        continue
+
+    # 페이지 로드 여부 확인
+    if len(driver.find_elements(by=By.TAG_NAME, value='h2')) > 0:
+        not_founded = driver.find_element(by=By.TAG_NAME, value='h2')
+        print("[not founded]:%s"%not_founded.text)
+        if not_founded.text == '찾을 수 없는 상품입니다':
+            with open(get_black_list_file_path(), "a", encoding="utf-8") as file:
+                sentence = '%d\n' % liquor_id
+                file.write(sentence)
+            black_list[liquor_id] = True
+            continue
 
     # 술 이름 가져오기 
     #names = driver.find_elements_by_class_name("good_tit1")
