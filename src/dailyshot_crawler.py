@@ -39,8 +39,8 @@ def set_black_list():
             print(blacklist_id.strip())
             black_list[int(blacklist_id)] = True
 
-#API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
-API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
+API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
+#API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
 MAX_CRAWL_COUNT = 100    # 최대 크롤링 데이터 개수
 MIN_LIQUOR_ID = 1       # 최소 주류 ID
@@ -84,9 +84,9 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
     # 페이지 로드 여부 확인
     if len(driver.find_elements(by=By.TAG_NAME, value='h2')) > 0:
-        not_founded = driver.find_element(by=By.TAG_NAME, value='h2')
-        print("[not founded]:%s"%not_founded.text)
-        if not_founded.text == '찾을 수 없는 상품입니다':
+        message = driver.find_element(by=By.TAG_NAME, value='h2')
+        print("[message]:%s"%message.text)
+        if message.text == '찾을 수 없는 상품입니다' or message.text == '상세 페이지가 없는 상품입니다':
             with open(get_black_list_file_path(), "a", encoding="utf-8") as file:
                 sentence = '%d\n' % liquor_id
                 file.write(sentence)
