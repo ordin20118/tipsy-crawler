@@ -42,9 +42,9 @@ def set_black_list():
 API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
 #API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
-MAX_CRAWL_COUNT = 100    # 최대 크롤링 데이터 개수
+MAX_CRAWL_COUNT = 500    # 최대 크롤링 데이터 개수
 MIN_LIQUOR_ID = 1       # 최소 주류 ID
-MAX_LIQUOR_ID = 4999    # 최대 주류 ID
+MAX_LIQUOR_ID = 96000    # 최대 주류 ID
 MIN_WAIT_TIME = 10      # 최소 대기 시간 - 10초
 MAX_WAIT_TIME = 30      # 최대 대기 시간 - 30초
 
@@ -67,7 +67,7 @@ while crawled_cnt < MAX_CRAWL_COUNT:
     liquor_id = random.randrange(MIN_LIQUOR_ID, MAX_LIQUOR_ID)
    
     crawl_url = 'https://dailyshot.co/pickup/products/%d/detail/' % liquor_id 
-    #crawl_url = 'https://dailyshot.co/pickup/products/1127/detail/'    # for test
+    #crawl_url = 'https://dailyshot.co/m/items/%d' % liquor_id => 더 많은 데이터 수집 가능할듯.
     driver.get(crawl_url)
 
     # TODO: 없는 제품 번호의 경우 블랙리스트로 등록 - file
@@ -81,6 +81,8 @@ while crawled_cnt < MAX_CRAWL_COUNT:
     # 블랙리스트 확인
     if liquor_id in black_list:
         continue
+
+    # TODO: 기존에 크롤링한 데이터인지 확인 (to server)
 
     # 페이지 로드 여부 확인
     if len(driver.find_elements(by=By.TAG_NAME, value='h2')) > 0:
