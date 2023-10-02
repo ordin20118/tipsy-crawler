@@ -45,14 +45,33 @@ def set_black_list():
         for blacklist_id in file:
             black_list[int(blacklist_id)] = True
 
+def is_url_duplicated(url):
+    API_URL_DUP_CHCK_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/url.tipsy'
+    headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer AUTOmKFxUkmakDV9w8z/yLOxrbm0WwxgbNpsOS6HhoUAGNY='
+    }
+    URL = '%s?url=%s' % (API_URL_DUP_CHCK_URL, url)
+    res = requests.get(URL, headers=headers)
+    resJson = res.json()
+
+    if res.status_code == 200:
+        if resJson['state'] == 0:
+            return False
+        elif resJson['state'] == 10:
+            print("[중복 URL]:%s" % url)
+            return True
+    else:
+        return True
+
 API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
 #API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
 MAX_CRAWL_COUNT = 1000    # 최대 크롤링 데이터 개수
 MIN_LIQUOR_ID = 1       # 최소 주류 ID
 MAX_LIQUOR_ID = 96000    # 최대 주류 ID
-MIN_WAIT_TIME = 2      # 최소 대기 시간 - 5초
-MAX_WAIT_TIME = 10      # 최대 대기 시간 - 15초
+MIN_WAIT_TIME = 1      # 최소 대기 시간 - 5초
+MAX_WAIT_TIME = 6      # 최대 대기 시간 - 15초
 
 driver = set_chrome_driver()
 driver.implicitly_wait(3)
@@ -73,6 +92,10 @@ while crawled_cnt < MAX_CRAWL_COUNT:
     liquor_id = random.randrange(MIN_LIQUOR_ID, MAX_LIQUOR_ID)
 
     crawl_url = 'https://dailyshot.co/m/items/%d' % liquor_id
+
+    # URL 중복 확인
+    if is_url_duplicated(crawl_url) == True:
+        continue
 
     try:        
         driver.get(crawl_url)
@@ -247,7 +270,6 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
         print("[CRAWLED_RESULT] - [TOTAL]:%s/[SUCCESS]:%s/[FAIL]:%s" % (crawled_cnt, crawled_success, crawled_fail))
 
-
         # set delay
         random_time = random.randrange(MIN_WAIT_TIME, MAX_WAIT_TIME)
         print("[WAITING FOR]: %ds ... "% random_time)
@@ -261,3 +283,4 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
 print('[END DAILY_SHOT CRAWLING]')
 driver.quit()
+
