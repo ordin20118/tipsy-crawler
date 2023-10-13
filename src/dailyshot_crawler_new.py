@@ -11,6 +11,15 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
+#API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
+API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
+CRAWL_SITE_CODE = 1
+MAX_CRAWL_COUNT = 1000    # 최대 크롤링 데이터 개수
+MIN_LIQUOR_ID = 1       # 최소 주류 ID
+MAX_LIQUOR_ID = 96000    # 최대 주류 ID
+MIN_WAIT_TIME = 1      # 최소 대기 시간 - 5초
+MAX_WAIT_TIME = 4      # 최대 대기 시간 - 15초
+
 def set_chrome_driver():
     chrome_options = webdriver.ChromeOptions()
     #chrome_options.add_argument('headless')
@@ -64,14 +73,26 @@ def is_url_duplicated(url):
     else:
         return True
 
-API_SAVE_URL = 'http://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy'
-#API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
-CRAWL_SITE_CODE = 1
-MAX_CRAWL_COUNT = 1000    # 최대 크롤링 데이터 개수
-MIN_LIQUOR_ID = 1       # 최소 주류 ID
-MAX_LIQUOR_ID = 96000    # 최대 주류 ID
-MIN_WAIT_TIME = 1      # 최소 대기 시간 - 5초
-MAX_WAIT_TIME = 6      # 최대 대기 시간 - 15초
+def is_name_duplicated(nameEn):
+    API_URL_DUP_CHCK_URL = 'http://tipsy.co.kr/svcmgr/api/liquor/duplication.tipsy'
+    headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer AUTOmKFxUkmakDV9w8z/yLOxrbm0WwxgbNpsOS6HhoUAGNY='
+    }
+    URL = '%s?nameEn=%s' % (API_URL_DUP_CHCK_URL, nameEn)
+    res = requests.get(URL, headers=headers)
+    resJson = res.json()
+
+    if res.status_code == 200:
+        if resJson['state'] == 0:
+            return False
+        elif resJson['state'] == 10:
+            print("[중복 영문명]:%s" % nameEn)
+            return True
+    else:
+        return True
+
+
 
 driver = set_chrome_driver()
 driver.implicitly_wait(3)
@@ -105,8 +126,7 @@ while crawled_cnt < MAX_CRAWL_COUNT:
         data['url'] = crawl_url
         data['site'] = CRAWL_SITE_CODE
 
-        print("[CRAWL_URL]")
-        print(crawl_url)
+        print("[CRAWL_URL]:%s"%crawl_url)
 
         # 블랙리스트 확인
         if liquor_id in black_list:
@@ -130,36 +150,21 @@ while crawled_cnt < MAX_CRAWL_COUNT:
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-1ete76a"]')) > 0:
             name_en = driver.find_element(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-1ete76a"]')
             data['name_en'] = name_en.text
-            print("[name_en]")
-            print(name_en.text)
+
+            if is_name_duplicated(name_en.text) == True:
+                continue
+
+            print("[name_en]:%s"%name_en.text)
         
 
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-Title-root dailyshot-2eov7z"]')) > 0:
             name_kr = driver.find_element(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-Title-root dailyshot-2eov7z"]')
             data['name_kr'] = name_kr.text
-            print("[name_kr]")
-            print(name_kr.text)
+            print("[name_kr]:%s"%name_kr.text)
 
-
-        # rating_avg => //*[@class="review-rate"]/p
-        if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-d2e2oa"]')) > 0:
-            rate_info = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-d2e2oa"]')
-            
-            # 리뷰 평점
-            rating_avg = rate_info[0].text
-            data['rating_avg'] = rating_avg
-            print("[rating_avg]")
-            print(rating_avg)
-
-            # 리뷰 개수
-            rating_count_txt = rate_info[1].text
-            end_idx = rating_count_txt.find("개")
-            rating_count = rating_count_txt[0:end_idx]
-            data['rating_count'] = rating_count
-            print("[rating_count]")
-            print(rating_count)
 
         # abv, category, country
+        print("scrape abv, category, country ...")
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="product-info-row"]')) > 0:
             info_rows = driver.find_elements(by=By.XPATH, value='//*[@class="product-info-row"]')
             for row in info_rows:
@@ -167,22 +172,19 @@ while crawled_cnt < MAX_CRAWL_COUNT:
                 for el in els:
                     if el.text == '종류':
                         data['category_name'] = els[1].text
-                        print("[category_name]")
-                        print(els[1].text)
+                        print("[category_name]:%s"%els[1].text)
                     elif el.text == '도수':
                         # TODO: replace 이후 숫자가 아니라면 데이터 설정x
                         data['abv'] = els[1].text.replace("%", "")
-                        print("[abv]")
-                        print(els[1].text)
+                        print("[abv]:%s"%els[1].text)
                     elif el.text == '국가':
                         data['country_name'] = els[1].text
-                        print("[country_name]")
-                        print(els[1].text)
+                        print("[country_name]:%s"%els[1].text)
                     elif el.text == '지역':
                         data['region_name'] = els[1].text
-                        print("[region_name]")
-                        print(els[1].text)
-
+                        print("[region_name]:%s"%els[1].text)
+        
+        print("scrape tasting note, nation, region, abv, category, country ...")
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-8k3bl3"]')) > 0:
             info_rows = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-8k3bl3"]')
             tasting_notes = {}
@@ -193,11 +195,9 @@ while crawled_cnt < MAX_CRAWL_COUNT:
                     # 타이틀에 따른 데이터 파싱
 
                     h3 = row.find_element(by=By.XPATH, value='./h3')
-                    print("[%s]" % h3.text)
                     title = h3.text
                     value = row.find_element(by=By.XPATH, value='./div').text
-
-                    print("%s" % value)
+                    print("[%s]:%s" % (h3.text, value))
 
                     if title == '종류':
                         data['category_name'] = value
@@ -221,17 +221,54 @@ while crawled_cnt < MAX_CRAWL_COUNT:
             data['tasting_notes'] = tasting_notes
 
 
+        # rating_avg => //*[@class="review-rate"]/p
+        print("scrape rating info ...")
+        if data['category_name'] in '와인':
+            if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-8uh6vn"]')) > 0:
+                rating_avg_info = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-8uh6vn"]')
+                
+                # 리뷰 평점
+                rating_avg = rating_avg_info[0].text
+                data['rating_avg'] = rating_avg
+                print("[rating_avg]:%s"%rating_avg)
+
+                # 리뷰 개수
+                rating_count_info = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-1unsgds"]')
+                rating_count_txt = rating_count_info[1].text
+                end_idx = rating_count_txt.find("개")
+                rating_count = rating_count_txt[0:end_idx]
+                data['rating_count'] = rating_count
+                print("[rating_count]:%s"%rating_count)
+        else:
+            if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-d2e2oa"]')) > 0:
+                rate_info = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-d2e2oa"]')
+                
+                # 리뷰 평점
+                rating_avg = rate_info[0].text
+                data['rating_avg'] = rating_avg
+                print("[rating_avg]:%s"%rating_avg)
+
+                # 리뷰 개수
+                rating_count_txt = rate_info[1].text
+                end_idx = rating_count_txt.find("개")
+                rating_count = rating_count_txt[0:end_idx]
+                data['rating_count'] = rating_count
+                print("[rating_count]:%s"%rating_count)
+
+
+
         # 썸네일 이미지
+        print("scrape thumbnail ...")
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Stack-root dailyshot-iuqr8"]')) > 0:
             thumb_div = driver.find_element(by=By.XPATH, value='//*[@class="dailyshot-Stack-root dailyshot-iuqr8"]')
             thumb = thumb_div.find_element(by=By.XPATH, value='./img')
             data['image_url'] = thumb.get_attribute('src')
-            print("[image_url]")
-            print(thumb.get_attribute('src'))
+            print("[image_url]:%s"%thumb.get_attribute('src'))
 
 
 
         # description
+        print("scrape deescription ...")
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-1gwjnlq"]')) > 0:
             description = ""
             comments = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-1gwjnlq"]')
@@ -276,6 +313,7 @@ while crawled_cnt < MAX_CRAWL_COUNT:
         time.sleep(random_time)
     except Exception as err:
         print("[Error Exception !!!]")
+        print(err)
         with open(get_err_log_file_path(), "a", encoding="utf-8") as file:
             sentence = '[DailyShot Crawl Error] url:%s / msg:%s\n' % (crawl_url, err)
             file.write(sentence)
