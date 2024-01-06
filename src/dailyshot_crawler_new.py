@@ -26,11 +26,11 @@ def set_chrome_driver():
     #chrome_options.add_argument('window-size=1920x1080')
     chrome_options.add_argument("disable-gpu")
     # 혹은 options.add_argument("--disable-gpu")
-    #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     #driver = webdriver.Chrome(service=Service(ChromeDriverManager(version="114.0.5735.90").install()), options=chrome_options)
 
     #/Users/gwanga/Downloads/chromedriver_mac_arm64/chromedriver
-    driver = webdriver.Chrome('/Users/gwanga/git/tipsy-crawler/chromedriver', options=chrome_options)
+    #driver = webdriver.Chrome('/Users/gwanga/git/tipsy-crawler/chromedriver', options=chrome_options)
     
     return driver
 
@@ -147,8 +147,9 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
         # 술 이름 가져오기 
         #names = driver.find_elements_by_class_name("good_tit1")
-        if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-1ete76a"]')) > 0:
-            name_en = driver.find_element(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-1ete76a"]')
+        name_en_xpath = '//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/div'
+        if len(driver.find_elements(by=By.XPATH, value=name_en_xpath)) > 0:
+            name_en = driver.find_element(by=By.XPATH, value=name_en_xpath)
             data['name_en'] = name_en.text
 
             if is_name_duplicated(name_en.text) == True:
@@ -157,6 +158,7 @@ while crawled_cnt < MAX_CRAWL_COUNT:
             print("[name_en]:%s"%name_en.text)
         
 
+        name_kr_xpath = '//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1'
         if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-Title-root dailyshot-2eov7z"]')) > 0:
             name_kr = driver.find_element(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-Title-root dailyshot-2eov7z"]')
             data['name_kr'] = name_kr.text
@@ -297,6 +299,8 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
         print("[SAVE REQUEST RESULT]")
         print("[STATUS_CODE]:%s" % res.status_code)
+        print(json.loads(res.text))
+        #print(res.json)
 
         if res.status_code == 200:
             crawled_success = crawled_success + 1
