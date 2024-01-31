@@ -2,3 +2,5 @@
 /Pipfile
 /chromedriver
 /sample
+
+config.py
