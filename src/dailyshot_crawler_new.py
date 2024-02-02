@@ -18,9 +18,6 @@ HOST = 'tipsy.co.kr'
 #HOST = '192.168.219.104:8080'
 API_SAVE_URL = 'http://'+HOST+'/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
-MAX_CRAWL_COUNT = 10000    # 최대 크롤링 데이터 개수
-MIN_LIQUOR_ID = 1       # 최소 주류 ID
-MAX_LIQUOR_ID = 30000    # 최대 주류 ID
 MIN_WAIT_TIME = 1      # 최소 대기 시간 - 5초
 MAX_WAIT_TIME = 4      # 최대 대기 시간 - 15초
 IS_TEST = False
@@ -156,7 +153,6 @@ print('[START DAILY_SHOT CRAWLING] start_crawl_liquor_id:%s' % next_crawl_liquor
 
 slack.send_message('데일리샷 술 데이터 수집 시작', '[데일리샷] 주류 번호 %s 부터 수집 시작됨.' % next_crawl_liquor_id)
 
-# 한 번의 실행에 100개의 데이터 조회
 driver_error_cnt = 0
 crawled_cnt = 0
 crawled_success = 0
@@ -167,7 +163,6 @@ while True:
 
     data = {}
 
-    # retry queue가 존재한다면 우선 처리 
     liquor_id = next_crawl_liquor_id
 
     next_crawl_liquor_id = next_crawl_liquor_id + 1
@@ -261,8 +256,8 @@ while True:
             print("[name_en]:None")
 
         name_kr_xpath = '//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1'
-        if len(driver.find_elements(by=By.XPATH, value='//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1')) > 0:
-            name_kr = driver.find_element(by=By.XPATH, value='//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1')
+        if len(driver.find_elements(by=By.XPATH, value=name_kr_xpath)) > 0:
+            name_kr = driver.find_element(by=By.XPATH, value=name_kr_xpath)
             data['name_kr'] = name_kr.text
             print("[name_kr]:%s"%name_kr.text)
         else:

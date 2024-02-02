@@ -10,15 +10,13 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from utils import slack
 
 HOST = 'tipsy.co.kr'
 #HOST = 'localhost:8080'
 #HOST = '192.168.219.104:8080'
 API_SAVE_URL = 'http://'+HOST+'/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
-MAX_CRAWL_COUNT = 5000    # 최대 크롤링 데이터 개수  
-MIN_LIQUOR_ID = 1       # 최소 주류 ID
-MAX_LIQUOR_ID = 96000    # 최대 주류 ID
 MIN_WAIT_TIME = 1      # 최소 대기 시간 - 5초
 MAX_WAIT_TIME = 4      # 최대 대기 시간 - 15초
 IS_TEST = False
@@ -42,6 +40,13 @@ def get_err_log_file_path():
     parent_path = os.path.dirname(now_path)
     pparent_path = os.path.dirname(parent_path)
     path = "%s/error.log"%pparent_path
+    return path
+
+def get_err_list_file_path():
+    now_path = os.path.abspath(__file__)
+    parent_path = os.path.dirname(now_path)
+    pparent_path = os.path.dirname(parent_path)
+    path = "%s/dailyshot_error_list.log"%pparent_path
     return path
 
 def is_url_duplicated(url):
@@ -96,11 +101,12 @@ driver.implicitly_wait(3)
 
 print('[START DAILY_SHOT CRAWLING UPDATER]')
 
-# 한 번의 실행에 100개의 데이터 조회
+driver_error_cnt = 0
 crawled_cnt = 0
 crawled_success = 0
 crawled_fail = 0
-while crawled_cnt < MAX_CRAWL_COUNT:
+unknown_cnt = 0
+while True:
 
     data = {}
 
@@ -118,7 +124,24 @@ while crawled_cnt < MAX_CRAWL_COUNT:
         continue
 
     try:        
-        driver.get(crawl_url)
+        try:
+            driver.get(crawl_url)
+        except Exception as err:
+            print("[Driver Error Exception !!!]")
+            print(err)
+            driver_error_cnt = driver_error_cnt + 1
+            with open(get_err_log_file_path(), "a", encoding="utf-8") as file:
+                sentence = '[DailyShot Crawl Error] url:%s / msg:%s\n' % (crawl_url, err)
+                file.write(sentence)
+            time.sleep(2)
+            driver = set_chrome_driver()
+            driver.implicitly_wait(3)
+            continue
+
+        if driver_error_cnt >= 100:
+            print('[END DAILY_SHOT CRAWLING]')
+            driver.quit()
+            break
 
         current_url = driver.current_url
         if crawl_url != current_url:
@@ -134,11 +157,14 @@ while crawled_cnt < MAX_CRAWL_COUNT:
             message = driver.find_element(by=By.XPATH, value='//*[@class="dailyshot-Text-root dailyshot-k9szl2"]')
             print("[message]:%s"%message.text)
             if message.text == '존재하지 않는 상품입니다.' or message.text == '상세 페이지가 없는 상품입니다':
-                with open(get_black_list_file_path(), "a", encoding="utf-8") as file:
-                    sentence = '%d\n' % liquor_id
-                    file.write(sentence)
-                black_list[liquor_id] = True
+                unknown_cnt = unknown_cnt + 1
+                # TODO: 해당 데터 '더 이상 크롤링 불가' 상태로 변경
                 continue
+        elif len(driver.find_elements(by=By.XPATH, value='//*[@class="next-error-h1"]')) > 0:
+            unknown_cnt = unknown_cnt + 1
+            print("존재하지 않는 술 번호")
+            # TODO: 해당 데터 '더 이상 크롤링 불가' 상태로 변경
+            continue;
 
         # 술 이름 가져오기 
         #names = driver.find_elements_by_class_name("good_tit1")
@@ -151,12 +177,20 @@ while crawled_cnt < MAX_CRAWL_COUNT:
             print("[name_en]:None")
 
         name_kr_xpath = '//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1'
-        if len(driver.find_elements(by=By.XPATH, value='//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1')) > 0:
-            name_kr = driver.find_element(by=By.XPATH, value='//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1')
+        if len(driver.find_elements(by=By.XPATH, value=name_kr_xpath)) > 0:
+            name_kr = driver.find_element(by=By.XPATH, value=name_kr_xpath)
             data['name_kr'] = name_kr.text
             print("[name_kr]:%s"%name_kr.text)
         else:
             print("[name_kr]:None")
+
+        # 한글 또는 영어 이름 하나라도 알 수 없는 경우 error 리스트에 추가 - 집계에는 unknown으로
+        isNE = 'name_en' in data
+        isNK = 'name_kr' in data
+        if (isNE is False) or (isNK is False):
+            unknown_cnt = unknown_cnt + 1
+            # TODO: 해당 데터 '크롤링 에러' 상태로 변경
+            continue
 
 
         # abv, category, country
@@ -230,43 +264,44 @@ while crawled_cnt < MAX_CRAWL_COUNT:
                         div = row.find_element(by=By.XPATH, value='./div')
                         input = div.find_element(by=By.XPATH, value='./input')
                         tasting_notes['acidity'] = int(input.get_attribute("value"))
-        else:            
-            if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-1lweaqt"]')) > 0:
-                info_rows = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-1lweaqt"]')
-                
-                for row in info_rows:
-                    # h3 존재 여부확인
-                    row_text = row.text
-                    value_div = row.find_element(by=By.XPATH, value='./div[@class="dailyshot-Text-root dailyshot-1kszlmz"]')
-                    value = value_div.text
 
-                    if '종류' in row_text:
-                        print("[value]:%s" % value)
-                        data['category_name'] = value
-                    elif '용량' in row_text:
-                        print("[value]:%s" % value)
-                        data['volume'] = value
-                    elif '도수' in row_text:
-                        abv = parse_abv(value)
-                        print("[value]:%s" % abv)
-                        data['abv'] = abv
-                    elif '국가' in row_text:
-                        print("[value]:%s" % value)
-                        data['country_name'] = value
-                    elif '지역' in row_text:
-                        print("[value]:%s" % value)
-                        data['region_name'] = value
-                    elif '품종' in row_text:
-                        data['variety'] = value
-                    elif 'Aroma' in row_text:
-                        print("[value]:%s" % value)
-                        tasting_notes['nosing'] = value
-                    elif 'Taste' in row_text:
-                        print("[value]:%s" % value)
-                        tasting_notes['tasting'] = value
-                    elif 'Finish' in row_text:
-                        print("[value]:%s" % value)
-                        tasting_notes['finish'] = value
+        if len(driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-1lweaqt"]')) > 0:
+            info_rows = driver.find_elements(by=By.XPATH, value='//*[@class="dailyshot-Group-root dailyshot-1lweaqt"]')
+            
+            for row in info_rows:
+                # h3 존재 여부확인
+                row_text = row.text
+                value_div = row.find_element(by=By.XPATH, value='./div[@class="dailyshot-Text-root dailyshot-1kszlmz"]')
+                value = value_div.text
+
+                if '종류' in row_text:
+                    print("[value]:%s" % value)
+                    data['category_name'] = value
+                elif '용량' in row_text:
+                    print("[value]:%s" % value)
+                    data['volume'] = value
+                elif '도수' in row_text:
+                    abv = parse_abv(value)
+                    print("[value]:%s" % abv)
+                    data['abv'] = abv
+                elif '국가' in row_text:
+                    print("[value]:%s" % value)
+                    data['country_name'] = value
+                elif '지역' in row_text:
+                    print("[value]:%s" % value)
+                    data['region_name'] = value
+                elif '품종' in row_text:
+                    data['variety'] = value
+                elif 'Aroma' in row_text:
+                    print("[value]:%s" % value)
+                    tasting_notes['nosing'] = value
+                elif 'Taste' in row_text:
+                    print("[value]:%s" % value)
+                    tasting_notes['tasting'] = value
+                elif 'Finish' in row_text:
+                    print("[value]:%s" % value)
+                    tasting_notes['finish'] = value            
+            
 
         if tasting_notes is not None:
             data['tasting_notes'] = tasting_notes
@@ -401,6 +436,24 @@ while crawled_cnt < MAX_CRAWL_COUNT:
 
         print("[CRAWLED_RESULT] - [TOTAL]:%s/[SUCCESS]:%s/[FAIL]:%s" % (crawled_cnt, crawled_success, crawled_fail))
 
+        if crawled_cnt >= 100:
+            content = '''
+            [데일리샷 데이터 수집 업데이트 집계]
+            - 총 수집 시도: %s
+            - 수집 성공: %s
+            - 수집 실패: %s
+            - 알수 없음: %s
+            - 마지막 술ID: %s
+            ''' % (crawled_cnt, crawled_success, crawled_fail, unknown_cnt, liquor_id)
+            
+            slack.send_message('데일리샷 술 데이터 업데이트 집계', content)
+
+            # 초기화
+            crawled_cnt = 0
+            crawled_success = 0
+            crawled_fail = 0
+            unknown_cnt = 0
+
         # set delay
         random_time = random.randrange(MIN_WAIT_TIME, MAX_WAIT_TIME)
         print("[WAITING FOR]: %ds ... "% random_time)
@@ -408,11 +461,21 @@ while crawled_cnt < MAX_CRAWL_COUNT:
     except Exception as err:
         print("[Error Exception !!!]")
         print(err)
+        crawled_fail = crawled_fail + 1
         with open(get_err_log_file_path(), "a", encoding="utf-8") as file:
             sentence = '[DailyShot Crawl Updater Error] url:%s / msg:%s\n' % (crawl_url, err)
             file.write(sentence)
+        with open(get_err_list_file_path(), "a", encoding="utf-8") as file:
+            sentence = '%s\n' % (liquor_id)
+            file.write(sentence)
+
+        if 'chromedriver' in str(err) or 'invalid session id' in str(err) or 'page crash' in str(err) or 'session' in str(err):
+            time.sleep(2)
+            driver = set_chrome_driver()
+            driver.implicitly_wait(3)
+            continue
 
 
-print('[END DAILY_SHOT CRAWLING]')
+print('[END DAILY_SHOT CRAWLING UPDATER]')
 driver.quit()
 
