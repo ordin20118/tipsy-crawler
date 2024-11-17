@@ -123,6 +123,28 @@ while True:
         time.sleep(5)
         continue
 
+    
+    if (crawled_cnt + 1) >= 101:
+        content = '''
+        [데일리샷 데이터 수집 업데이트 집계]
+        - 총 수집 시도: %s
+        - 수집 성공: %s
+        - 수집 실패: %s
+        - 알수 없음: %s
+        - 마지막 술 ID: %s
+        ''' % (crawled_cnt, crawled_success, crawled_fail, unknown_cnt, liquor_id)
+        
+        slack.send_message('데일리샷 술 데이터 업데이트 집계', content)
+
+        # 초기화
+        crawled_cnt = 0
+        crawled_success = 0
+        crawled_fail = 0
+        unknown_cnt = 0
+        driver_error_cnt = 0
+
+    crawled_cnt = crawled_cnt + 1
+
     try:        
         try:
             driver.get(crawl_url)
@@ -436,23 +458,6 @@ while True:
 
         print("[CRAWLED_RESULT] - [TOTAL]:%s/[SUCCESS]:%s/[FAIL]:%s" % (crawled_cnt, crawled_success, crawled_fail))
 
-        if crawled_cnt >= 100:
-            content = '''
-            [데일리샷 데이터 수집 업데이트 집계]
-            - 총 수집 시도: %s
-            - 수집 성공: %s
-            - 수집 실패: %s
-            - 알수 없음: %s
-            - 마지막 술ID: %s
-            ''' % (crawled_cnt, crawled_success, crawled_fail, unknown_cnt, liquor_id)
-            
-            slack.send_message('데일리샷 술 데이터 업데이트 집계', content)
-
-            # 초기화
-            crawled_cnt = 0
-            crawled_success = 0
-            crawled_fail = 0
-            unknown_cnt = 0
 
         # set delay
         random_time = random.randrange(MIN_WAIT_TIME, MAX_WAIT_TIME)
@@ -475,7 +480,7 @@ while True:
             driver.implicitly_wait(3)
             continue
 
-
+slack.send_message('데일리샷 업데이트 데이터 수집기', '데일리샷 업데이트 데이터 수집기 종료')
 print('[END DAILY_SHOT CRAWLING UPDATER]')
 driver.quit()
 
