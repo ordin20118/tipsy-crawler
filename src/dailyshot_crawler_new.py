@@ -17,7 +17,7 @@ from utils import slack
 #API_SAVE_URL = 'http://localhost:8080/svcmgr/api/crawled/liquor.tipsy'
 HOST = 'tipsy.co.kr'
 #HOST = 'localhost:8080'
-API_SAVE_URL = 'http://'+HOST+'/svcmgr/api/crawled/liquor.tipsy'
+API_SAVE_URL = 'https://'+HOST+'/svcmgr/api/crawled/liquor.tipsy'
 CRAWL_SITE_CODE = 1
 MIN_WAIT_TIME = 1      # 최소 대기 시간 - 5초
 MAX_WAIT_TIME = 4      # 최대 대기 시간 - 15초
@@ -206,6 +206,7 @@ while True:
     # URL 중복 확인
     if is_url_duplicated(crawl_url) == True and IS_TEST is False:
         duplicated_cnt = duplicated_cnt + 1
+        driver.quit()
         continue
        
     driver = set_chrome_driver()
@@ -254,6 +255,7 @@ while True:
                     sentence = '%d\n' % liquor_id
                     file.write(sentence)
                 black_list[liquor_id] = True
+                driver.quit()
                 continue
         elif len(driver.find_elements(by=By.XPATH, value='//*[@class="next-error-h1"]')) > 0:
             unknown_cnt = unknown_cnt + 1
@@ -262,6 +264,7 @@ while True:
                 sentence = '%d\n' % liquor_id
                 file.write(sentence)
             black_list[liquor_id] = True
+            driver.quit()
             continue;
 
         # 술 이름 가져오기 
@@ -273,6 +276,7 @@ while True:
 
             if is_name_duplicated(name_en.text) == True and IS_TEST is False:
                 duplicated_cnt = duplicated_cnt + 1
+                driver.quit()
                 continue
 
             print("[name_en]:%s"%name_en.text)
@@ -286,6 +290,7 @@ while True:
             with open(get_black_list_file_path(), "a", encoding="utf-8") as file:
                 sentence = '%d\n' % liquor_id
                 file.write(sentence)
+            driver.quit()
             continue
 
         #name_kr_xpath = '//*[@id="__next"]/div[1]/div/main/div/div/div[1]/div[1]/div[3]/div/div[2]/h1'
