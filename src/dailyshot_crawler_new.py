@@ -30,6 +30,7 @@ def set_chrome_driver():
     #chrome_options.add_argument('window-size=1920x1080')
     chrome_options.add_argument('--disable-extensions')
     chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')  # 공유 메모리 대신 디스크를 사용하도록 하여 메모리 부족 문제를 해결
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")    # 브라우저가 자동화 도구임을 감지하지 못하도록 방지
     chrome_options.add_argument('--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7')
