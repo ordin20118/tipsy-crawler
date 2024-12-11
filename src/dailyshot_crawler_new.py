@@ -207,7 +207,6 @@ while True:
     # URL 중복 확인
     if is_url_duplicated(crawl_url) == True and IS_TEST is False:
         duplicated_cnt = duplicated_cnt + 1
-        driver.quit()
         continue
        
     driver = set_chrome_driver()
