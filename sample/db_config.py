@@ -1,0 +1,6 @@
+DB_HOST = "119.205.221.220"
+DB_USER_RAW_DATA = "alcohol_master"
+DB_USER_LUX_UNA = "luxuna"
+DB_PW = "rer1625vq"
+DB_SCHEMA_RAW_DATA = "raw_data"
+DB_SCHEMA_LUX_UNA = "lux_una"

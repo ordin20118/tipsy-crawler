@@ -17,7 +17,7 @@ NEWSPIDER_MODULE = "dailyshot_liquor_crawler.spiders"
 #USER_AGENT = "dailyshot_liquor_crawler (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
@@ -25,7 +25,7 @@ ROBOTSTXT_OBEY = True
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-#DOWNLOAD_DELAY = 3
+DOWNLOAD_DELAY = 2
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -50,9 +50,13 @@ ROBOTSTXT_OBEY = True
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
+DOWNLOADER_MIDDLEWARES = {
 #    "dailyshot_liquor_crawler.middlewares.DailyshotLiquorCrawlerDownloaderMiddleware": 543,
-#}
+    #'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+    #'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+    #'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 400,
+    #'scrapy_fake_useragent.middleware.RetryUserAgentMiddleware': 401,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
@@ -62,9 +66,9 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    "dailyshot_liquor_crawler.pipelines.DailyshotLiquorCrawlerPipeline": 300,
-#}
+ITEM_PIPELINES = {
+   "dailyshot_liquor_crawler.pipelines.DailyshotLiquorCrawlerPipeline": 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html

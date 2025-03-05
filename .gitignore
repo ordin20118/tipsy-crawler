@@ -1,6 +1,6 @@
 /.DS_Store
 /Pipfile
 /chromedriver
-/sample
+logs
 
 config.py
