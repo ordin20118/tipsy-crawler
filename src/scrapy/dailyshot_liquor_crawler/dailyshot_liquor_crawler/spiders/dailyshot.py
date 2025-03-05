@@ -30,8 +30,8 @@ class DailyshotSpider(scrapy.Spider):
     def start_requests(self):
         # start_id = 1    # 시작 ID
         # end_id = 30000  # 원하는 마지막 ID
-        start_id = 15061  # 시작 ID
-        end_id = 30000  # 원하는 마지막 ID
+        start_id = 1  # 시작 ID
+        end_id = 40000  # 원하는 마지막 ID
 
         for item_id in range(start_id, end_id + 1):
             url = f"https://dailyshot.co/m/item/{item_id}"
@@ -44,6 +44,7 @@ class DailyshotSpider(scrapy.Spider):
 
         item = DailyshotLiquorCrawlerItem()
         tasting_notes = TastingNotesItem()
+        item['url'] = response.url
         item['name_en'] = response.css('#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-16cncgc > div::text').get()
         item['name_kr'] = response.css('#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-16cncgc > h1::text').get()
         

@@ -15,6 +15,8 @@ class TastingNotesItem(scrapy.Item):
     acidity = scrapy.Field()
 
 class DailyshotLiquorCrawlerItem(scrapy.Item):
+    url = scrapy.Field()
+    site = scrapy.Field()
     name_en = scrapy.Field()
     name_kr = scrapy.Field()
     abv = scrapy.Field()
