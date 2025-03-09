@@ -12,6 +12,8 @@ import json
 
 class DailyshotLiquorCrawlerPipeline:
 
+    API_URL = "https://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy"
+    API_URL_DEV = "http://localhost:8080/svcmgr/api/crawled/liquor.tipsy"
     # 초기화 메소드
     # def __init__(self):
     #     # DB 설정(자동 커밋)
@@ -42,7 +44,7 @@ class DailyshotLiquorCrawlerPipeline:
                     'Content-Type': 'application/json; charset=utf-8',
                     'Authorization': 'Bearer AUTOmKFxUkmakDV9w8z/yLOxrbm0WwxgbNpsOS6HhoUAGNY='
                 }
-                res = requests.post('https://tipsy.co.kr/svcmgr/api/crawled/liquor.tipsy', headers=headers, data=data_json)
+                res = requests.post(self.API_URL_DEV, headers=headers, data=data_json)
             except requests.exceptions.RequestException as e:
                 spider.logger.error(f"API request failed: {e}")
         else:

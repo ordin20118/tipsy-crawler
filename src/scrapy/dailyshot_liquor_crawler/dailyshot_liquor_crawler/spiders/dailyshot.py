@@ -31,7 +31,7 @@ class DailyshotSpider(scrapy.Spider):
         # start_id = 1    # 시작 ID
         # end_id = 30000  # 원하는 마지막 ID
         start_id = 1  # 시작 ID
-        end_id = 40000  # 원하는 마지막 ID
+        end_id = 30000  # 원하는 마지막 ID
 
         for item_id in range(start_id, end_id + 1):
             url = f"https://dailyshot.co/m/item/{item_id}"
@@ -182,13 +182,18 @@ class DailyshotSpider(scrapy.Spider):
 
         # description
         self.logger.info("scrape deescription ...")
-        desc_selector = '#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(9) > div.dailyshot-Stack-root.dailyshot-e90c5m'
+        desc_selector = 'div.dailyshot-Stack-root.dailyshot-e90c5m > div.dailyshot-Stack-root.dailyshot-2ufkj3'
         desc_info = response.css(desc_selector)
         if len(desc_info) > 0:
-            desc_test_text = desc_info[0].xpath("text()").get()
-            item['description'] = desc_test_text
-            self.logger.info("[description]:%s"%desc_test_text)
+            texts = response.xpath('//div[@class="dailyshot-Stack-root dailyshot-2ufkj3"]//p//text()').getall()
+            cleaned_texts = [text.strip() for text in texts if text.strip()]
+            full_text = '\n'.join(cleaned_texts)
+            item['description'] = full_text
+            self.logger.info("[description]:%s"%full_text)
         else:
             self.logger.info("[description]:None")
+
+        
+
 
         return item
