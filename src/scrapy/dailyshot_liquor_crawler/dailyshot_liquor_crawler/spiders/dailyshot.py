@@ -30,7 +30,7 @@ class DailyshotSpider(scrapy.Spider):
     def start_requests(self):
         # start_id = 1    # 시작 ID
         # end_id = 30000  # 원하는 마지막 ID
-        start_id = 1  # 시작 ID
+        start_id = 3254  # 시작 ID
         end_id = 30000  # 원하는 마지막 ID
 
         for item_id in range(start_id, end_id + 1):
@@ -45,9 +45,13 @@ class DailyshotSpider(scrapy.Spider):
         item = DailyshotLiquorCrawlerItem()
         tasting_notes = TastingNotesItem()
         item['url'] = response.url
-        item['name_en'] = response.css('#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-16cncgc > div::text').get()
-        item['name_kr'] = response.css('#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-16cncgc > h1::text').get()
+        item['name_en'] = response.css('#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-16cncgc > div::text').get()
+        item['name_kr'] = response.css('#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-16cncgc > h1::text').get()
         
+       
+        self.logger.info(f"name_en: {item['name_en']}")
+        self.logger.info(f"name_kr: {item['name_kr']}")
+
         if item['name_en'] == None:
             return
 
@@ -192,8 +196,5 @@ class DailyshotSpider(scrapy.Spider):
             self.logger.info("[description]:%s"%full_text)
         else:
             self.logger.info("[description]:None")
-
-        
-
 
         return item
