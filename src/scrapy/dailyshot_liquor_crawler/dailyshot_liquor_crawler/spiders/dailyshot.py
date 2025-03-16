@@ -30,7 +30,7 @@ class DailyshotSpider(scrapy.Spider):
     def start_requests(self):
         # start_id = 1    # 시작 ID
         # end_id = 30000  # 원하는 마지막 ID
-        start_id = 3254  # 시작 ID
+        start_id = 1  # 시작 ID
         end_id = 30000  # 원하는 마지막 ID
 
         for item_id in range(start_id, end_id + 1):
@@ -109,8 +109,8 @@ class DailyshotSpider(scrapy.Spider):
         # 와인, 샴페인인 경우
         if '와인' in item['category_name'] or '샴페인' in item['category_name']:
             # rate_avg
-            rating_avg_selector = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(7) > div.dailyshot-Stack-root.dailyshot-1bixg60 > div > div > div.dailyshot-Text-root.dailyshot-1t1nzgw"
-            rating_avg_selector_2 = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(9) > div.dailyshot-Stack-root.dailyshot-1bixg60 > div > div > div.dailyshot-Text-root.dailyshot-1t1nzgw"
+            rating_avg_selector = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > div.dailyshot-Text-root.dailyshot-15bwq65"
+            rating_avg_selector_2 = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > div.dailyshot-Text-root.dailyshot-15bwq65"
             
             rating_avg = 0
             rating_avg_info = response.css(rating_avg_selector)
@@ -129,7 +129,7 @@ class DailyshotSpider(scrapy.Spider):
             self.logger.info("[rating_avg]:%s"%rating_avg)
 
             # rating count
-            rating_count_selector = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(7) > div.dailyshot-Stack-root.dailyshot-1bixg60 > div > div > div.dailyshot-Stack-root.css-82a6rk.dailyshot-1kzvwqj > div:nth-child(2) > div:nth-child(1)"
+            rating_count_selector = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > a > span"
             rating_count_info = response.css(rating_count_selector)
             if len(rating_count_info) > 0:
                 rating_count_txt = rating_count_info[0].xpath("text()").get()
@@ -140,15 +140,36 @@ class DailyshotSpider(scrapy.Spider):
                 
             # pairing
             self.logger.info("scrape pairing info ...")
-            pairing_selector = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(7) > div:nth-child(8) > div"
+            pairing_selector = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(7) > div:nth-child(8) > div"
             pairing_info = response.css(pairing_selector)
             if len(pairing_info) > 0:
                 pairing = pairing_info[0].xpath("text()").get()
                 item['pairing'] = pairing
                 self.logger.info("[pairing]:%s"%pairing)
+
+            # tasting_notes
+            # body
+            self.logger.info("scrape wine tasting notes ...")
+            wine_tatse_selector = "div.dailyshot-Slider-thumb.dailyshot-66pi43"
+            wine_tatse_info = response.css(wine_tatse_selector)
+            if len(wine_tatse_info) > 0:
+                for idx, taste in enumerate(wine_tatse_info):
+                    taste_val = wine_tatse_info[0].css("::attr(aria-valuenow)").get()
+                    if idx == 0:
+                        item['tasting_notes']['body'] = taste_val
+                    elif idx == 1:
+                        item['tasting_notes']['tannin'] = taste_val
+                    elif idx == 2:
+                        item['tasting_notes']['sweetness'] = taste_val
+                    elif idx == 3:
+                        item['tasting_notes']['acidity'] = taste_val
+
+
+
+
         else:
             # 리뷰 평점
-            rating_avg_selector = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > div.dailyshot-Text-root.dailyshot-15bwq65"
+            rating_avg_selector = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > div.dailyshot-Text-root.dailyshot-15bwq65"
             rating_info = response.css(rating_avg_selector)
             if len(rating_info) > 0:
                 rating_avg = rating_info[0].xpath("text()").get()
@@ -156,7 +177,7 @@ class DailyshotSpider(scrapy.Spider):
                 self.logger.info("[rating_avg]:%s"%rating_avg)
 
             # 리뷰 개수
-            rating_count_selector = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > a > span"
+            rating_count_selector = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Group-root.dailyshot-k87rjc > a > span"
             rating_count_info = response.css(rating_count_selector)
             if len(rating_count_info) > 0:
                 rating_count_txt = rating_count_info[0].xpath("text()").get()
@@ -167,7 +188,7 @@ class DailyshotSpider(scrapy.Spider):
 
         # price
         self.logger.info("scrape price ...")
-        price_selector = "#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-uet3or > div > div > div > span.dailyshot-Text-root.dailyshot-15bwq65"
+        price_selector = "#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-1178y6y > div > div.dailyshot-Stack-root.dailyshot-uet3or > div > div > div.dailyshot-Text-root.dailyshot-1ci3dff > span.dailyshot-Text-root.dailyshot-15bwq65"
         price_info = response.css(price_selector)
         if len(price_info) > 0:
             price = price_info[0].xpath("text()").get()
@@ -176,7 +197,7 @@ class DailyshotSpider(scrapy.Spider):
 
         # sumbnail
         self.logger.info("scrape thumbnail ...")
-        sumbnail_selector = '#gentoo-sc > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-iuqr8 > div > div.dailyshot-AspectRatio-root.dailyshot-8ma7di > img'
+        sumbnail_selector = '#__next > div > div.dailyshot-dgr89h > div > main > div > div > div > div.dailyshot-Stack-root.dailyshot-1178y6y > div:nth-child(1) > div.dailyshot-Stack-root.dailyshot-iuqr8 > div > div.dailyshot-AspectRatio-root.dailyshot-8ma7di > img'
         thumb = response.css(sumbnail_selector)
         if len(thumb) > 0:
             item['image_url'] = thumb[0].xpath("@src").get()

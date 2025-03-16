@@ -45,6 +45,7 @@ class DailyshotLiquorCrawlerPipeline:
                     'Authorization': 'Bearer AUTOmKFxUkmakDV9w8z/yLOxrbm0WwxgbNpsOS6HhoUAGNY='
                 }
                 res = requests.post(self.API_URL, headers=headers, data=data_json)
+                spider.logger.info(f"[SAVE RESULT]:{res}")
             except requests.exceptions.RequestException as e:
                 spider.logger.error(f"API request failed: {e}")
         else:
